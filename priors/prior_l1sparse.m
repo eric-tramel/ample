@@ -1,4 +1,4 @@
-function [a,c] = prior_l1sparse(r,s,params)
+function [a,c,learned_params] = prior_l1sparse(r,s,params)
 % PRIOR_L1SPARSE Generate the means and variances according to the
 % 	prior parameters and the hidden variational variables {r,s} for
 %	the assumption of the spare L1 prior (exponential distribution
@@ -22,3 +22,8 @@ a = max(x_min, (r + s) .* double((-r > s)) ) + ...
 %% Calculate variances
 c = s .* double(((r > s & r < (x_max + s)) | (r < -s & r > (x_min - s)) ));
 c = max(c,1e-10);
+
+%% Dummy Assignment
+% There is no real change or "learning" of the parameters for this 
+% prior, so we will just pass through the limits on x.
+learned_params = params;

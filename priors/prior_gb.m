@@ -1,4 +1,4 @@
-function [a,c] = prior_gb(r,s,params)
+function [a,c,learned_params] = prior_gb(r,s,params)
 % PRIOR_GB Generate the means and variances according to the
 % 	prior parameters and the hidden variational variables {r,s}.
 %
@@ -10,7 +10,14 @@ function [a,c] = prior_gb(r,s,params)
 %		own prior parameters.
 %     * The value s should be given as the square.
 
+%% I/O
+learn_prior = 0;
+if nargout > 2
+    learn_prior = 1;
+end
+
 %% Reassignments
+n   = length(r);
 m   = params(:,1);
 v   = params(:,2);
 rho = params(:,3);
@@ -38,3 +45,24 @@ a2 = a.*a;
 m2 = ivps2 .* (crs2 + vpr)./z;
 c = max(1e-18,m2 - a2);				% Ensure that we don't get a numerically bad
 									% value for c.
+                                    
+%% Learn New Prior 
+if learn_prior
+	if size(params,1) ~= 1
+		error('Prior learning not implemented for non-iid signals.\n');
+	end
+	% Update Rho
+	cs = r ./ s + m ./ v;
+	sv = 1 ./ s + 1 ./ v;
+	ex = exp(0.5 .* cs .* cs ./ sv  -  0.5 .* m .* m ./ v);
+	rho_n = sum(sv.*a./cs);
+	rho_d = sum( 1 ./ ((1-rho) + rho .* ex ./ sqrt(v .* sv)) );
+	rho = rho_n ./ rho_d;
+
+	% Update Mean
+	m = sum(a) ./ (rho.*n);
+
+	% Update Variance
+	v = sum(c + a.*a) ./ (rho * n) - m.*m; 
+	learned_params = [m, v, rho];
+end
