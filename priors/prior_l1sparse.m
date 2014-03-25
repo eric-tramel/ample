@@ -12,16 +12,26 @@ function [a,c,learned_params] = prior_l1sparse(r,s,params)
 %		own prior parameters.
 
 %% Reassignments
+n       = length(r);
 x_min   = params(:,1);
 x_max   = params(:,2);
 
-%% Calculate means
-a = max(x_min, (r + s) .* double((-r > s)) ) + ...
-	min(x_max, (r - s) .* double(( r > s)) );
+% %% Calculate means
+% a = max(x_min, (r + s) .* double((-r > s)) ) + ...
+% 	min(x_max, (r - s) .* double(( r > s)) );
+% 
+% %% Calculate variances
+% c = s .* double(((r > s & r < (x_max + s)) | (r < -s & r > (x_min - s)) ));
 
-%% Calculate variances
-c = s .* double(((r > s & r < (x_max + s)) | (r < -s & r > (x_min - s)) ));
-c = max(c,1e-10);
+%% Sanity Test
+% Jean's 
+R_ = r;
+S2_ = s;
+max_ = x_max;
+min_ = x_min;
+a = min(max_,(R_ > 0) .* (R_ - S2_) .* (R_ > S2_) ) + max(min_,(R_ < 0) .* (R_ + S2_) .* (-R_ > S2_) );
+c = S2_ .* (abs(R_) > S2_);
+
 
 %% Dummy Assignment
 % There is no real change or "learning" of the parameters for this 
