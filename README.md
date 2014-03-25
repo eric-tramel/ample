@@ -13,3 +13,8 @@ the system which obtained those observations, and the type of signal prior. Howe
 particular needs.
 * ***Generalizable:*** `ample` provides a framework by which the user can easily 
 implement their own priors to fit AMP to their specific application.
+
+Acknowledgements
+----------------
+Many thanks to Jean Barbier and Andre Manoel for their moment and update calculations
+for the supplied priors.
