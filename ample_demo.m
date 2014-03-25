@@ -9,8 +9,8 @@
 %% Demo Parameters
 N = 2^12;				% Signal dimensionality
 subrate  = 0.50;		% Ratio of M/N (percent of dim. reduction)
-sparsity = 0.10;		% Percent of signal which is non-zero
-gb_mean = 0;			% Mean of GB signal prior
+sparsity = 0.25;		% Percent of signal which is non-zero
+gb_mean = 0.5;			% Mean of GB signal prior
 gb_var  = 1;			% Variance of GB signal prior
 delta   = 1e-8;			% iid AWGN variance 
 M = round(N*subrate);	% Number of measurements
@@ -30,6 +30,7 @@ fprintf('Running ample-GB...\n');
 [a_gb,c_gb,history_gb] = ample(	A,y,@prior_gb,...
 					     		[gb_mean, gb_var, sparsity],...
 					  			x);
+
 
 %% Solve with ample-L1
 fprintf('Running ample-L1...\n');

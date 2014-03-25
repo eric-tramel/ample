@@ -1,12 +1,20 @@
 function [a,c,history] = ample(F,y,moment_func,prior_params,x0)
     [M,N] = size(F);
     F2 = F.^2;
+    
+    % Check to see if we need to learn parameters
+    learn_prior = 0;
+    if size(prior_params) == 0
+        prior_params = [0 1 0.5];
+        learn_prior = 1;
+    end
 
     damp = 0;
     max_iter = 300;
-    conv_thresh = 1e-13;
+    conv_thresh = 1e-10;
     
     init_a = zeros(N,1);
+%     init_a = F\y;
     init_c = ones(N,1);  
     init_S = zeros(N,1);
     init_R = zeros(N,1);
@@ -51,7 +59,11 @@ function [a,c,history] = ample(F,y,moment_func,prior_params,x0)
         
         % Update moments
         last_a = a;
-        [a,c] = moment_func(R,S,prior_params);  
+        if learn_prior
+            [a,c,prior_params] = moment_func(R,S,prior_params);  
+        else
+            [a,c] = moment_func(R,S,prior_params);  
+        end
         
         % Update delta
         delta = sum((y - F*a).^2) ./ sum(1. ./ (1. + (F2*c) / delta));
