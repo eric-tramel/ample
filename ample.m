@@ -1,10 +1,52 @@
-function [a,c,history] = ample(F,y,moment_func,varargin)
-    [M,N] = size(F);
-    F2 = F.^2;
+function [a,c,history] = ample(F_,y,moment_func,varargin)
+    mean_approximation = 0;
+    if ~isa(F_,'struct')
+    % In this case, the user has supplied us with an explicit matrix for
+    % the system we are trying to solve.
+        [M,N] = size(F_);
+        % Storing these in memory to save on computation.        
+        FT_  = F_';
+        F2_  = abs(F_).^2;
+        F2T_ = F2_';
+        % Assignments to the anonymous functions.
+        F   = @(x_) F_*x_;
+        FT  = @(x_) FT_*x_;
+        F2  = @(x_) F2_*x_;
+        F2T = @(x_) F2T_*x_;        
+    else
+    % In this case, the user has supplied us with a structure continaing
+    % the forward, squared-forward, adjoint, and squared-adjoint operators.
+    % This structure must additionally contain the signal dimensionality
+    % and number of measurements.
+        N = F_.N;
+        M = F_.M;        
+        
+        % Assignments
+        F   = F_.forward;
+        FT  = F_.adjoint;
+        % Sometimes we may not actually have these squared forms, so we
+        % will only set these if they exist.
+        if ~isfield(F_,'squared_forward') && ~isfield(F_,'squared_adjoint')
+            % If the user hasn't specified a squared-forward and -adjoint
+            % operator, we can only run in the unity-approx mode...            
+            mean_approximation = 1;
+            % ... but we should probably warn them about it.
+            fprintf('[WARNING] F.squared_forward or F.squared_adjoin unspecified. Running in unity-approximation mode.\n');
+        end        
+        if isfield(F_,'squared_forward')
+            F2  = F_.squared_forward;
+        end
+        if isfield(F_,'squared_adjoint')            
+            F2T = F_.squared_adjoint;
+        end
+    end
     
+    % Set the default options and update them according to the
+    % user specified options.
     options = process_varargin(defaults(N,M),varargin);
 
-    % Check to see if we need to learn parameters
+    % Re-assignments to put off having to refactor the code.
+    mean_approximation = mean_approximation | options.mean_approximation;    
     learn_prior = options.learn_prior_params;
     prior_params = options.prior_params;
     damp = options.damp;
@@ -23,6 +65,17 @@ function [a,c,history] = ample(F,y,moment_func,varargin)
         x0 = options.true_solution;
     end
     
+    % Check for approximations
+    if options.unity_approximation
+        F2  = @(x_) sum(x_);
+        F2T = @(x_) sum(x_);
+    end    
+    
+    if mean_approximation
+        F2  = @(x_) mean(x_);
+        F2T = @(x_) mean(x_);
+    end
+    
     % Set initial loop parameters
     a = options.init_a;
     c = options.init_c;
@@ -35,18 +88,18 @@ function [a,c,history] = ample(F,y,moment_func,varargin)
     for i=1:max_iter
         % Update V
         oldDV = delta + V;
-        V = F2*c;
+        V = F2(c);
         DV = delta + V;
         
         % Update \omega
-        O = F*a - (y - O) .* (V./oldDV);
+        O = F(a) - (y - O) .* (V./oldDV);
 
         % Update Sigma
-        S_ = 1./(F2' * (1./DV));
+        S_ = 1./F2T(1./DV);
         S = damp.*S + (1-damp).*S_;
         
         % Update R
-        R_ = a + S.*(F'*((y - O)./DV));
+        R_ = a + S.*(FT((y - O)./DV));
         R = damp.*R + (1-damp).*R_;
         
         % Update moments
@@ -59,15 +112,11 @@ function [a,c,history] = ample(F,y,moment_func,varargin)
         
         % Update delta
         if options.learn_delta
-            delta = sum((y - F*a).^2) ./ sum(1. ./ (1. + (F2*c) / delta));
+            delta = sum(abs(y - F(a)).^2) ./ sum(1 ./ (1. + F2(c)./delta));
         end
-        convergence = norm(last_a - a).^2./N;
         
-        % If we are in debug mode, show the current state
-        if options.debug
-            display_state(R,S,a,c);
-        end
-
+        convergence = norm(last_a - a).^2./N;
+                
         % History Reporting
         if report_history
             history.convergence(i) = convergence;
@@ -78,24 +127,32 @@ function [a,c,history] = ample(F,y,moment_func,varargin)
             end
         end
 
-        % Check for convergence
-        if convergence < conv_tol
-            break;
+        % If we are in debug mode, show the current state
+        if options.debug
+            display_state(R,S,a,c);
         end
-                
+
         % Output
         if calc_mse
             fprintf('\r [%d] | delta : %0.2e | convergence : %0.2e | mse : %0.2e      ',i,delta,convergence,norm(a-x0).^2./N);
         else
             fprintf('\r [%d] | delta : %0.2e | convergence : %0.2e |        ',i,delta,convergence);
         end
+        
+        % Check for convergence
+        if convergence < conv_tol
+            break;
+        end                
     end
     fprintf('\n');
     
-
+%% Helper Functions
 function display_state(r,s,a,c)
+    % AMPLE::DISPLAY_STATE Visualization function when running in debug
+    % mode. Displays the current values of {r,s,a,c}. Plots the
+    % variance-type variables, {s,c}, on a log-scale.
     N = length(r);
-    figure(2);
+    figure(42);
     subplot(2,2,1);
         stem(r,'-k.','MarkerSize',1);
         grid on; box on;
@@ -122,13 +179,17 @@ function display_state(r,s,a,c)
         
     
 function options = process_varargin(options,arguments)
+    % AMPLE::PROCESS_VARARGIN Scan through all the user arguments and set
+    % the fields of the options structure accordingly. Assumes that the
+    % names the user sets and the target fields in the structure are the
+    % same.
     while ~isempty(arguments)
         field = lower(arguments{1});
         value = arguments{2};
-        % Old Way
-        %options = setfield(options,field,value);
-        % New Way
         options.(field) = value;
+        % If having compatibility issues, comment out the above line and
+        % use the subsequent one, instead.
+        %options = setfield(options,field,value);               
         arguments(1:2) = [];
     end
 
@@ -151,3 +212,5 @@ function options = defaults(N,M)
     options.init_c = ones(N,1);
     options.debug = 0;
     options.log_file = [];
+    options.unity_approximation = 0;
+    options.mean_approximation = 0;
