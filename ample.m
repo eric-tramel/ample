@@ -65,15 +65,9 @@ function [a,c,history] = ample(F_,y,moment_func,varargin)
         x0 = options.true_solution;
     end
     
-    % Check for approximations
-    if options.unity_approximation
-        F2  = @(x_) sum(x_);
-        F2T = @(x_) sum(x_);
-    end    
-    
     if mean_approximation
-        F2  = @(x_) mean(x_);
-        F2T = @(x_) mean(x_);
+        F2  = @(x_) mean(x_).*ones(M,1);
+        F2T = @(x_) mean(x_).*ones(N,1);
     end
     
     % Set initial loop parameters
@@ -112,7 +106,12 @@ function [a,c,history] = ample(F_,y,moment_func,varargin)
         
         % Update delta
         if options.learn_delta
-            delta = sum(abs(y - F(a)).^2) ./ sum(1 ./ (1. + F2(c)./delta));
+%             delta = sum(abs(y - F(a)).^2) ./ sum(1 ./ (1. + F2(c)./delta));
+            % Trying it out a bit differently
+%             delta = sum( abs(y - O).^2  ./ (1 + V./delta).^2 ) ./ sum(1 ./ (1 + V./delta));
+%             delta = sum( abs(y - F(a)).^2  ./ (1 + F2(c)./delta).^2 ) ./ sum(1 ./ (1 + F2(c)./delta));
+            D = y - O;
+            delta = delta .* abs(sum((D./V).^2)) ./ sum(1./V);
         end
         
         convergence = norm(last_a - a).^2./N;
@@ -212,5 +211,4 @@ function options = defaults(N,M)
     options.init_c = ones(N,1);
     options.debug = 0;
     options.log_file = [];
-    options.unity_approximation = 0;
     options.mean_approximation = 0;
