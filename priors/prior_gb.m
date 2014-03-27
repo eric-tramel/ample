@@ -59,10 +59,11 @@ if learn_prior
 	rho_d = sum( 1 ./ ((1-rho) + rho .* ex ./ sqrt(v .* sv)) );
 	rho = rho_n ./ rho_d;
 
-	% Update Mean
+	% Update Mean 
 	m = sum(a) ./ (rho.*n);
 
 	% Update Variance
 	v = sum(c + a.*a) ./ (rho * n) - m.*m; 
+
 	learned_params = [m, v, rho];
 end

@@ -1,33 +1,34 @@
-% ample_em_demo.m
+% ample_em_fourier_demo.m
 %
 % A demonstration test-case for ample.m. Will
 % calculate the factorization of the posterior 
 % distribution of an iid Gauss-Bernoulli
-% signal sampled with an iid Gaussian random matrix 
-% given the set of observations. All learning will be
+% signal sampled using scrambled random rows of the 
+% Fourier basis. All learning will be
 % done in EM mode, that is, update of learned parameters
 % will be done after the AMP iteartion converges.
 
 %% Demo Parameters
-N = 2^12;				% Signal dimensionality
+N = 2^16;				% Signal dimensionality
 subrate  = 0.60;		% Ratio of M/N (percent of dim. reduction)
 sparsity = 0.25;		% Percent of signal which is non-zero
-gb_mean = 0.2;			% Mean of GB signal prior
-gb_var  = 0.4;			% Variance of GB signal prior
+gb_mean = 0.4;			% Mean of GB signal prior
+gb_var  = 1.25;			% Variance of GB signal prior
 delta   = 1e-8;			% iid AWGN variance 
 em_iter = 40;           % Max number of EM iterations
 M = round(N*subrate);	% Number of measurements
 K = round(sparsity*N);	% Number of non-zeros
-xrange = 4*gb_var + gb_mean;
+xrange = 4*gb_var + abs(gb_mean);
 
 %% Generate Problem
-A = randn(M,N) ./ sqrt(N);                    % A random iid projector		
-x  = sqrt(gb_var).*randn(N,1) + gb_mean;	  % Generate gaussian part of signal...
+A = random_scrambled_fourier(N,M);            % Generate a Fourier operator structure.
+x  = sqrt(gb_var).*randn(N,1) + gb_mean;      % Generate gaussian part of signal...
 rp = randperm(N);                             % Get random nonzero locations...
 z = rp(K+1:end); 
 nz = rp(1:K);
 x(z) = 0;                                     % Set the zeros to make the signal sparse.
-y = A*x + sqrt(delta)*randn(M,1);             % Calculate noisy measurements
+w = sqrt(delta./2)*randn(M,1) + 1i.*sqrt(delta./2)*randn(M,1);
+y = A.forward(x) + w;             % Calculate noisy measurements
 
 %% Solve with ample-GB
 fprintf('Running ample-GB...\n');
@@ -38,7 +39,7 @@ fprintf('Running ample-GB...\n');
                                'debug',0,...
                                'learn_delta',0, ...
                                'delta',delta, ...
-                               'convergence_tolerance',1e-13,...
+                               'convergence_tolerance',1e-10,...
                                'learning_mode','em',...
                                'max_em_iterations',em_iter,...
                                'report_history',1);
@@ -60,7 +61,7 @@ figure(1); clf;
 	xlabel(sprintf('MSE = %0.2e',mse_gb));
 	title('Recovery with true GB prior');
 	legend('Location','EastOutside');
-	axis([1 N -xrange xrange]);
+	axis([1 N -abs(xrange) abs(xrange)]);
 
 %% MSE Evolution Comparison
 figure(2); clf;
