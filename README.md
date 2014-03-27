@@ -1,7 +1,10 @@
 ample
 =====
 
-General Implementation of Approximate Message Passing for Matlab
+A General implementation of Approximate Message Passing (AMP) for Matlab. 
+
+***Note:*** This repository is still under active development. There may be some
+hiccups.
 
 Intro
 -----
