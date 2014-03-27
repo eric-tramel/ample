@@ -4,12 +4,16 @@ function [a,c,learned_params] = prior_l1sparse(r,s,params)
 %	the assumption of the spare L1 prior (exponential distribution
 % 	in the limit).
 %
-% [a,c] = prior_l1sparse(r,s,params) Calculate the means (a) and variances
+% [a,c,learned_params] = prior_l1sparse(r,s,params) Calculate the means (a) and variances
 %  (c) according to the given values of the prior parameters.
 %  Params should consist of a 1x2 vector [min_x, max_x]. 
+%	  * The value s should be given as the square.
 %     * If params is given as a Nx2 matrix, then it is assumed that the
 %		signal is not iid and each value is calculated according to its 
 %		own prior parameters.
+%     * Since there are no actual parameters to learn for this prior, 
+%		if `learned_params` is specified as an output, it is equal to value
+%		of `params` used when the function was called.
 
 %% Reassignments
 n       = length(r);

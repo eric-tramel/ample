@@ -117,8 +117,7 @@ function [a,c,history,R,S] = ample(F_,y,moment_func,varargin)
             
             % Update delta
             if options.learn_delta
-                % delta = sum(abs(y - F(a)).^2) ./ sum(1 ./ (1. + F2(c)./delta));
-                delta = sum( abs(y - O).^2  ./ (1 + V./delta).^2 ) ./ sum(1 ./ (1 + V./delta));
+                delta = sum( (abs(y) - abs(O)).^2  ./ (1 + V./delta).^2 ) ./ sum(1 ./ (1 + V./delta));
             end
             
             convergence = norm(last_a - a).^2./N;
@@ -286,7 +285,7 @@ function options = defaults(N,M)
     options.debug = 0;
     options.log_file = [];
     options.mean_approximation = 0;
-    options.learning_mode = 'em';
+    options.learning_mode = 'track';
     options.max_em_iterations = 20;
     options.report_history = 1;
     

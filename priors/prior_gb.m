@@ -2,7 +2,7 @@ function [a,c,learned_params] = prior_gb(r,s,params)
 % PRIOR_GB Generate the means and variances according to the
 % 	prior parameters and the hidden variational variables {r,s}.
 %
-% [a,c] = prior_gb(r,s,params) Calculate the means (a) and variances
+% [a,c,learned_params] = prior_gb(r,s,params) Calculate the means (a) and variances
 %  (c) according to the given values of r, s, and the prior parameters.
 %  Params should consist of a 1x3 vector [mean,variance,rho]. 
 %     * If params is given as a Nx3 matrix, then it is assumed that the
