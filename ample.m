@@ -139,6 +139,15 @@ function [a,c,history,R,S] = ample(F_,y,moment_func,varargin)
                 display_state(R,S,a,c);
             end
 
+            % Do we have nan issues?
+            nancheck(V,'V','error');
+            nancheck(O,'O','error');
+            nancheck(R,'R','error');
+            nancheck(S,'S','error');
+            nancheck(a,'a','error');
+            nancheck(c,'c','error');
+
+
             % Output
             if calc_mse
                 fprintf('\r [%d] | delta : %0.2e | convergence : %0.2e | mse : %0.2e      ',i,delta,convergence,norm(a-x0).^2./N);
@@ -291,6 +300,22 @@ function vars = struct2varargin(structure)
     vars = cell(2*length(var_names),1);
     vars(1:2:end) = var_names;
     vars(2:2:end) = var_vals;
+
+function nancheck(x,name,report_level)
+    % AMPLE::NANCHECK Checks the value of x. If it is a NaN, an report
+    % will be made.
+    nanid = isnan(x);
+    snid = sum(nanid);
+    if snid > 0
+        n = length(x);
+        rep_str = sprintf('NaN dectected on %d entries of (%s), [size=%d].',snid,name,n);
+        switch report_level
+            case 'warning'
+                fprintf('[AMPLE::WARNING] %s \n',rep_str);
+            case 'error'
+                error('[AMPLE::ERROR] %s \n',rep_str);
+        end
+    end
     
     
     
