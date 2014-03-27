@@ -1,4 +1,4 @@
-function [a,c,history] = ample(F_,y,moment_func,varargin)
+function [a,c,history,R,S] = ample(F_,y,moment_func,varargin)
     mean_approximation = 0;
     if ~isa(F_,'struct')
     % In this case, the user has supplied us with an explicit matrix for
@@ -53,9 +53,18 @@ function [a,c,history] = ample(F_,y,moment_func,varargin)
     max_iter = options.max_iterations;
     conv_tol = options.convergence_tolerance;    
     delta = options.delta;    
+
+    em_mode = 1;
+    switch(options.learning_mode)
+        case 'em'
+            em_mode = 1;
+        case 'track'
+            em_mode = 0;
+    end
     
     report_history = 0;
-    if nargout > 2
+    history = [];
+    if nargout > 2 && options.report_history
         report_history = 1;
     end
     
@@ -78,70 +87,127 @@ function [a,c,history] = ample(F_,y,moment_func,varargin)
     O = options.init_o;
     V = options.init_v;    
 
-    %% Main Loop
-    for i=1:max_iter
-        % Update V
-        oldDV = delta + V;
-        V = F2(c);
-        DV = delta + V;
-        
-        % Update \omega
-        O = F(a) - (y - O) .* (V./oldDV);
+    if ~em_mode
+    % In this case, we solve the problem using parallel learning updates, or
+    % no learning updates at all. This is the default operation of ample.
+        for i=1:max_iter
+            % Update V
+            oldDV = delta + V;
+            V = F2(c);
+            DV = delta + V;
+            
+            % Update \omega
+            O = F(a) - (y - O) .* (V./oldDV);
 
-        % Update Sigma
-        S_ = 1./F2T(1./DV);
-        S = damp.*S + (1-damp).*S_;
-        
-        % Update R
-        R_ = a + S.*(FT((y - O)./DV));
-        R = damp.*R + (1-damp).*R_;
-        
-        % Update moments
-        last_a = a;
-        if learn_prior
-            [a,c,prior_params] = moment_func(R,S,prior_params);  
-        else
-            [a,c] = moment_func(R,S,prior_params);  
-        end        
-        
-        % Update delta
-        if options.learn_delta
-%             delta = sum(abs(y - F(a)).^2) ./ sum(1 ./ (1. + F2(c)./delta));
-            % Trying it out a bit differently
-%             delta = sum( abs(y - O).^2  ./ (1 + V./delta).^2 ) ./ sum(1 ./ (1 + V./delta));
-%             delta = sum( abs(y - F(a)).^2  ./ (1 + F2(c)./delta).^2 ) ./ sum(1 ./ (1 + F2(c)./delta));
-            D = y - O;
-            delta = delta .* abs(sum((D./V).^2)) ./ sum(1./V);
-        end
-        
-        convergence = norm(last_a - a).^2./N;
-                
-        % History Reporting
-        if report_history
-            history.convergence(i) = convergence;
-            history.delta_estimate(i) = delta;
-            history.prior_params(i,:) = prior_params;
+            % Update Sigma
+            S_ = 1./F2T(1./DV);
+            S = damp.*S + (1-damp).*S_;
+            
+            % Update R
+            R_ = a + S.*(FT((y - O)./DV));
+            R = damp.*R + (1-damp).*R_;
+            
+            % Update moments
+            last_a = a;
+            if learn_prior
+                [a,c,prior_params] = moment_func(R,S,prior_params);  
+            else
+                [a,c] = moment_func(R,S,prior_params);  
+            end        
+            
+            % Update delta
+            if options.learn_delta
+%                 D = y - O;
+%                 delta = delta .* abs(sum((D./V).^2)) ./ sum(1./V);
+                delta = sum(abs(y - F(a)).^2) ./ sum(1 ./ (1. + F2(c)./delta));
+            end
+            
+            convergence = norm(last_a - a).^2./N;
+                    
+            % History Reporting
+            if report_history
+                history.convergence(i) = convergence;
+                history.delta_estimate(i) = delta;
+                history.prior_params(i,:) = prior_params;
+                if calc_mse
+                    history.mse(i) = norm(a-x0).^2./N;
+                end
+            end
+
+            % If we are in debug mode, show the current state
+            if options.debug
+                display_state(R,S,a,c);
+            end
+
+            % Output
             if calc_mse
-                history.mse(i) = norm(a-x0).^2./N;
+                fprintf('\r [%d] | delta : %0.2e | convergence : %0.2e | mse : %0.2e      ',i,delta,convergence,norm(a-x0).^2./N);
+            else
+                fprintf('\r [%d] | delta : %0.2e | convergence : %0.2e |        ',i,delta,convergence);
+            end
+            
+            % Check for convergence
+            if convergence < conv_tol
+                break;
+            end                
+        end
+    else
+    % In this case, we want to use EM-learning, which means that we update the learned parameters
+    % only after convegence of the AMP iteartion. We can accomplish this by making a recursive
+    % call to ample.
+        emoptions = options;
+        emoptions.learn_delta = 0;                  % Turn off learning mode
+        emoptions.learn_prior_params = 0;           % Turn off learning mode
+        emoptions.learning_mode = 'track';          % Make sure we don't EM inside the EM
+        % Need to initialize the history variables
+        if report_history
+            history.convergence = [];            
+            history.delta_estimate = [];
+            history.prior_params = [];
+            if calc_mse
+                history.mse = [];
             end
         end
+        for emiter = 1:options.max_em_iterations
+            fprintf('**EM ITERATION #%d**\n',emiter);
+            % Call ample for this local solution
+            last_a = a;
+            input_args = struct2varargin(emoptions);
+            [a,c,history_,r,s] = ample(F_,y,moment_func,input_args{:});
 
-        % If we are in debug mode, show the current state
-        if options.debug
-            display_state(R,S,a,c);
-        end
+            % Update the prior parameters
+            if options.learn_prior_params
+                % Need to have the final R and S values...
+                [~,~,emoptions.prior_params] = moment_func(r,s,emoptions.prior_params);  
+            end
 
-        % Output
-        if calc_mse
-            fprintf('\r [%d] | delta : %0.2e | convergence : %0.2e | mse : %0.2e      ',i,delta,convergence,norm(a-x0).^2./N);
-        else
-            fprintf('\r [%d] | delta : %0.2e | convergence : %0.2e |        ',i,delta,convergence);
+            % Update Delta -- Using the fixed-point omega style update
+            if options.learn_delta
+                emoptions.delta = sum(abs(y - F(a)).^2) ./ sum(1 ./ (1. + F2(c)./emoptions.delta));
+            end
+
+            % TODO: Merging of the per-EM-iteration history terms.
+            if report_history
+                history.convergence = [history.convergence, history_.convergence];
+                history.delta_estimate = [history.delta_estimate, history_.delta_estimate];
+                history.prior_params = [history.prior_params; history_.prior_params];
+                if calc_mse
+                    history.mse = [history.mse, history_.mse];
+                end
+            end
+            
+            % Update the initial states
+            emoptions.init_a = a;
+            emoptions.init_c = c;
+            emoptions.init_r = r;
+            emoptions.init_s = s;
+
+            % Check for convergence
+            convergence = norm(a - last_a).^2./N;
+            if convergence < conv_tol
+                break;
+            end            
         end
-        
-        % Check for convergence
-        if convergence < conv_tol
-            break;
-        end                
     end
     fprintf('\n');
     
@@ -212,3 +278,19 @@ function options = defaults(N,M)
     options.debug = 0;
     options.log_file = [];
     options.mean_approximation = 0;
+    options.learning_mode = 'em';
+    options.max_em_iterations = 20;
+    options.report_history = 1;
+    
+function vars = struct2varargin(structure)
+    % AMPLE::STRUCT2VARARGIN Convert the given structure to varargin
+    % format, that is, all odd-indexed cells containing the field names and
+    % all even-indexed cells containing the values.
+    var_names = fieldnames(structure);
+    var_vals  = struct2cell(structure);
+    vars = cell(2*length(var_names),1);
+    vars(1:2:end) = var_names;
+    vars(2:2:end) = var_vals;
+    
+    
+    
