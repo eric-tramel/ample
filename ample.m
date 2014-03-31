@@ -134,8 +134,12 @@ function [a,c,history,R,S] = ample(F_,y,moment_func,varargin)
 
             % If we are in debug mode, show the current state
             if options.debug
-                display_state(R,S,a,c);
-            end
+                if options.image_mode
+                    display_state_image(R,S,a,c);
+                else
+                    display_state(R,S,a,c);
+                end
+            end            
 
             % Do we have nan issues?
             nancheck(V,'V','error');
@@ -151,6 +155,10 @@ function [a,c,history,R,S] = ample(F_,y,moment_func,varargin)
                 fprintf('\r [%d] | delta : %0.2e | convergence : %0.2e | mse : %0.2e      ',i,delta,convergence,norm(a-x0).^2./N);
             else
                 fprintf('\r [%d] | delta : %0.2e | convergence : %0.2e |        ',i,delta,convergence);
+            end
+            
+            if options.pause_mode
+                pause;
             end
             
             % Check for convergence
@@ -248,6 +256,35 @@ function display_state(r,s,a,c)
         axis([1 N 1e-13 10]);
         title('Factorized Variances');
     drawnow;
+    
+function display_state_image(r,s,a,c)
+    % AMPLE::DISPLAY_STATE_IMAGE Visualization function when running in debug
+    % mode. Displays the current values of {r,s,a,c}. Plots the
+    % variance-type variables, {s,c}, on a log-scale.
+    N = length(r);
+    n = sqrt(N);
+    r = reshape(r,[n n]);
+    s = reshape(s,[n n]);
+    a = reshape(a,[n n]);
+    c = reshape(c,[n n]);
+    figure(42);
+    subplot(2,2,1);
+        imagesc(r);
+        axis image;
+        title('Varational Means');
+    subplot(2,2,3);
+        imagesc(s);
+        axis image;
+        title('Varational Variances');
+    subplot(2,2,2);
+        imagesc(a);
+        axis image;
+        title('Factorized Means');
+    subplot(2,2,4);
+        imagesc(c);
+        axis image;
+        title('Factorized Variances');
+    drawnow;
         
     
 function options = process_varargin(options,arguments)
@@ -288,6 +325,8 @@ function options = defaults(N,M)
     options.learning_mode = 'track';
     options.max_em_iterations = 20;
     options.report_history = 1;
+    options.image_mode = 0;
+    options.pause_mode = 0;
     
 function vars = struct2varargin(structure)
     % AMPLE::STRUCT2VARARGIN Convert the given structure to varargin
