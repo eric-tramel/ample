@@ -1,8 +1,8 @@
-% ample_binary_demo.m
+% ample_qary_demo.m
 %
 % A demonstration test-case for ample.m. Will
 % calculate the factorization of the posterior 
-% distribution of an bernoulli (binary)
+% distribution of an Q-valued 
 % signal sampled with an iid Gaussian random matrix 
 % given the set of observations. All learning will be
 % done in EM mode, that is, update of learned parameters
@@ -54,6 +54,7 @@ params{2} = pmf;
                                'max_em_iterations',em_iter,...
                                'max_iterations',amp_iter, ...
                                'report_history',1,...
+                               'convergence_type','iteration',...
                                'damp',0);
 
 %% Reporting

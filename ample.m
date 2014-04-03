@@ -61,6 +61,14 @@ function [a,c,history,R,S] = ample(F_,y,moment_func,varargin)
         case 'track'
             em_mode = 0;
     end
+
+    conv_mode = 1;
+    switch(options.convergence_type)
+        case 'iteration'
+            conv_mode = 1;
+        case 'residual'
+            conv_mode = 0;
+    end
     
     report_history = 0;
     history = [];
@@ -123,7 +131,11 @@ function [a,c,history,R,S] = ample(F_,y,moment_func,varargin)
                 % delta = delta .* (sum(abs(g).^2) ./ sum(-dg));
             end
             
-            convergence = norm(last_a - a).^2./N;
+            if conv_mode
+                convergence = norm(last_a - a).^2./N;
+            else
+                convergence = norm(abs(y - F(a))).^2./N;
+            end
                     
             % History Reporting
             if report_history
@@ -330,6 +342,7 @@ function options = defaults(N,M)
     options.report_history = 1;
     options.image_mode = 0;
     options.pause_mode = 0;
+    options.convergence_type = 'iteration';
     
 function vars = struct2varargin(structure)
     % AMPLE::STRUCT2VARARGIN Convert the given structure to varargin
