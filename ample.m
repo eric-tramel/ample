@@ -118,6 +118,9 @@ function [a,c,history,R,S] = ample(F_,y,moment_func,varargin)
             % Update delta
             if options.learn_delta
                 delta = sum( (abs(y) - abs(O)).^2  ./ (1 + V./delta).^2 ) ./ sum(1 ./ (1 + V./delta));
+                % g  = (y - O) ./ (delta + V);
+                % dg = -1 ./ (delta + V);
+                % delta = delta .* (sum(abs(g).^2) ./ sum(-dg));
             end
             
             convergence = norm(last_a - a).^2./N;
