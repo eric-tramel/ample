@@ -154,7 +154,7 @@ function [a,c,history,R,S] = ample(F_,y,moment_func,varargin)
             if report_history
                 history.convergence(i) = convergence;
                 history.delta_estimate(i) = delta;
-                history.prior_params(i,:) = prior_params;
+                history.prior_params{i} = prior_params;
                 if calc_mse
                     history.mse(i) = norm(a-x0).^2./N;
                 end
@@ -178,10 +178,12 @@ function [a,c,history,R,S] = ample(F_,y,moment_func,varargin)
             nancheck(S,'S','error');
 
             % Output
-            if calc_mse
-                fprintf('\r [%d] | delta : %0.2e | convergence : %0.2e | mse : %0.2e      ',i,delta,convergence,norm(a-x0).^2./N);
-            else
-                fprintf('\r [%d] | delta : %0.2e | convergence : %0.2e |        ',i,delta,convergence);
+            if options.verbose_mode
+                if calc_mse
+                    fprintf('\r [%d] | delta : %0.2e | convergence : %0.2e | mse : %0.2e      ',i,delta,convergence,norm(a-x0).^2./N);
+                else
+                    fprintf('\r [%d] | delta : %0.2e | convergence : %0.2e |        ',i,delta,convergence);
+                end
             end
             
             if options.pause_mode
