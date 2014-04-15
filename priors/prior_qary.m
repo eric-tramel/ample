@@ -23,7 +23,6 @@ n   = length(r);
 alphabet = params{1};
 pmf      = params{2};
 nv   = length(pmf);
-exp_part = zeros(n,nv);
 z  = zeros(n,1);
 a  = zeros(n,1);
 a2 = zeros(n,1);
@@ -77,28 +76,29 @@ if learn_prior
 	end
 
 	fprintf('\n[WARNING] Prior learning is not completely verified for Q-ary.\n');
+	learned_params = params;
+	
+	% % TODO: Learn the pmf...
+	% % 1. Calculate the MAP estimate according to the {R,S} values.
+	% q = zeros(nv,n);
+	% for i=1:nv
+	% 	p    = pmf(i);
+	% 	tau  = alphabet(i);
+	% 	tau2 = tau.*tau;
+	% 	logpr = log(p./p0max);
+	% 	logpr = logpr(:);
+	% 	pratio = exp((2.*tau.*r - 2.*taumax.*r + taumax2 - tau2)./(2.*s) + logpr); 
+	% 	q(i,:) = pratio ./ z;
+	% end
+	% [~,max_states] = max(q);
+	% x = alphabet(max_states);
 
-	% TODO: Learn the pmf...
-	% 1. Calculate the MAP estimate according to the {R,S} values.
-	q = zeros(nv,n);
-	for i=1:nv
-		p    = pmf(i);
-		tau  = alphabet(i);
-		tau2 = tau.*tau;
-		logpr = log(p./p0max);
-		logpr = logpr(:);
-		pratio = exp((2.*tau.*r - 2.*taumax.*r + taumax2 - tau2)./(2.*s) + logpr); 
-		q(i,:) = pratio ./ z;
-	end
-	[~,max_states] = max(q);
-	x = alphabet(max_states);
-
-	% 2. Count the ratio of each dictionary value in the MAP estimate
-	%    to determine the empirical PMF.
-	x_alphabet = unique(x);
-	for i=1:length(x_alphabet)
-		new_pmf(i) = sum(x == x_alphabet(i)) ./ n;
-	end
-	learned_params     = params;
-	learned_params{2}  = new_pmf;
+	% % 2. Count the ratio of each dictionary value in the MAP estimate
+	% %    to determine the empirical PMF.
+	% for i=1:length(alphabet)
+	% 	new_pmf(i) = sum(x == alphabet(i)) ./ n;
+ %    end
+ %    figure(1); bar(new_pmf); drawnow;
+	% learned_params     = params;
+	% learned_params{2}  = new_pmf;
 end

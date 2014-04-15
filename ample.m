@@ -157,13 +157,12 @@ function [a,c,history,R,S] = ample(F_,y,moment_func,varargin)
             end            
 
             % Do we have nan issues?
+            nancheck(a,'a','error');
+            nancheck(c,'c','error');
             nancheck(V,'V','error');
             nancheck(O,'O','error');
             nancheck(R,'R','error');
             nancheck(S,'S','error');
-            nancheck(a,'a','error');
-            nancheck(c,'c','error');
-
 
             % Output
             if calc_mse
