@@ -13,6 +13,9 @@ sparsity = 0.20;		% Percent of signal which is non-zero
 gb_mean = 0;			% Mean of GB signal prior
 gb_var  = 1;			% Variance of GB signal prior
 delta   = 1e-8;			% iid AWGN variance 
+damp       = 0.00;      % Damping on {R,S} update
+prior_damp = 0.00;      % Damping on {a,c} update
+iters      = 1000;      % Maximum number of `ample` iterations
 M = round(N*subrate);	% Number of measurements
 K = round(sparsity*N);	% Number of non-zeros
 xrange = 4*gb_var + gb_mean;
@@ -35,6 +38,9 @@ fprintf('Running ample-GB...\n');
                                'debug',0,...
                                'learn_delta',1, ...
                                'delta',1, ...
+                               'damp', damp, ...
+                               'prior_damp', prior_damp, ...
+                               'max_iterations', iters, ...
                                'convergence_tolerance',1e-10);
 
 

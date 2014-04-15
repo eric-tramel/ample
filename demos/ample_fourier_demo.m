@@ -15,6 +15,8 @@ gb_var  = 1;			% Variance of GB signal prior
 delta   = 1e-8;			% iid AWGN variance 
 M = round(N*subrate);	% Number of measurements
 K = round(sparsity*N);	% Number of non-zeros
+damp       = 0.00;      % Damping on {R,S} update
+prior_damp = 0.00;      % Damping on {a,c} update
 xrange = 4*gb_var + gb_mean;
 
 %% Generate Problem
@@ -36,7 +38,9 @@ fprintf('Running ample-GB...\n');
                                'debug',0,...
                                'learn_delta',0, ...
                                'delta',delta, ...
-                               'convergence_tolerance',1e-10);
+                               'convergence_tolerance',1e-10, ...
+                               'damp',damp, ...
+                               'prior_damp',prior_damp);
 
 
 %% Solve with ample-L1

@@ -50,6 +50,7 @@ function [a,c,history,R,S] = ample(F_,y,moment_func,varargin)
     learn_prior = options.learn_prior_params;
     prior_params = options.prior_params;
     damp = options.damp;
+    prior_damp = options.prior_damp;
     max_iter = options.max_iterations;
     conv_tol = options.convergence_tolerance;    
     delta = options.delta;    
@@ -118,10 +119,20 @@ function [a,c,history,R,S] = ample(F_,y,moment_func,varargin)
             % Update moments
             last_a = a;
             if learn_prior
-                [a,c,prior_params] = moment_func(R,S,prior_params);  
+                [a_,c_,prior_params_] = moment_func(R,S,prior_params);  
+
+                if iscell(prior_params)         
+                    % If the prior parameters are given in a cell, we will assume that the
+                    % first value in the cell is a 
+                    prior_params{1} = prior_damp.*prior_params{1} + (1-prior_damp).*prior_params_{1};
+                else
+                    prior_params    = prior_damp.*prior_params    + (1-prior_damp).*prior_params_;
+                end
             else
-                [a,c] = moment_func(R,S,prior_params);  
-            end        
+                [a_,c_] = moment_func(R,S,prior_params);  
+            end
+            a = prior_damp.*a + (1-prior_damp).*a_;
+            c = prior_damp.*c + (1-prior_damp).*c_; 
             
             % Update delta
             if options.learn_delta
@@ -326,6 +337,7 @@ function options = defaults(N,M)
     options.max_iterations = 250;
     options.convergence_tolerance = 1e-10;
     options.damp = 0;
+    options.prior_damp = 0;
     options.true_solution = [];    
     options.init_v = ones(M,1);
     options.init_o = zeros(M,1);
