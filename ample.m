@@ -110,7 +110,7 @@ function [a,c,history,R,S] = ample(F_,y,moment_func,varargin)
 
             % Update Sigma
             S_ = 1./F2T(1./DV);
-            S = damp.*S + (1-damp).*S_;
+            S = damp.*S + (1-damp).*S_;            
             
             % Update R
             R_ = a + S.*(FT((y - O)./DV));
@@ -123,7 +123,9 @@ function [a,c,history,R,S] = ample(F_,y,moment_func,varargin)
 
                 if iscell(prior_params)         
                     % If the prior parameters are given in a cell, we will assume that the
-                    % first value in the cell is a 
+                    % first value in the cell is a value that can be
+                    % damped.
+                    prior_params = prior_params_;
                     prior_params{1} = prior_damp.*prior_params{1} + (1-prior_damp).*prior_params_{1};
                 else
                     prior_params    = prior_damp.*prior_params    + (1-prior_damp).*prior_params_;
