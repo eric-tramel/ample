@@ -1,4 +1,4 @@
-function [a,c,history,R,S] = ample(F_,y,moment_func,varargin)
+function [a,c,history,R,S,prior_params] = ample(F_,y,moment_func,varargin)
     mean_approximation = 0;
     if ~isa(F_,'struct')
     % In this case, the user has supplied us with an explicit matrix for
@@ -139,9 +139,6 @@ function [a,c,history,R,S] = ample(F_,y,moment_func,varargin)
             % Update delta
             if options.learn_delta
                 delta = sum( (abs(y) - abs(O)).^2  ./ (1 + V./delta).^2 ) ./ sum(1 ./ (1 + V./delta));
-                % g  = (y - O) ./ (delta + V);
-                % dg = -1 ./ (delta + V);
-                % delta = delta .* (sum(abs(g).^2) ./ sum(-dg));
             end
             
             if conv_mode
@@ -154,7 +151,7 @@ function [a,c,history,R,S] = ample(F_,y,moment_func,varargin)
             if report_history
                 history.convergence(i) = convergence;
                 history.delta_estimate(i) = delta;
-                history.prior_params{i} = prior_params;
+                history.prior_params(i,:) = prior_params{1};        % Assuming that the first cell are the learned values
                 if calc_mse
                     history.mse(i) = norm(a-x0).^2./N;
                 end
@@ -358,6 +355,7 @@ function options = defaults(N,M)
     options.image_mode = 0;
     options.pause_mode = 0;
     options.convergence_type = 'iteration';
+    options.complex_split_mode = 0;
     
 function vars = struct2varargin(structure)
     % AMPLE::STRUCT2VARARGIN Convert the given structure to varargin
