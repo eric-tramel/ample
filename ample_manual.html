@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="generator" content="pandoc">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+  <title></title>
+  <style type="text/css">code{white-space: pre;}</style>
+  <!--[if lt IE 9]>
+    <script src="http://html5shim.googlecode.com/svn/trunk/html5.js"></script>
+  <![endif]-->
+  <style type="text/css">
+table.sourceCode, tr.sourceCode, td.lineNumbers, td.sourceCode {
+  margin: 0; padding: 0; vertical-align: baseline; border: none; }
+table.sourceCode { width: 100%; line-height: 100%; }
+td.lineNumbers { text-align: right; padding-right: 4px; padding-left: 4px; color: #aaaaaa; border-right: 1px solid #aaaaaa; }
+td.sourceCode { padding-left: 5px; }
+code > span.kw { color: #007020; font-weight: bold; }
+code > span.dt { color: #902000; }
+code > span.dv { color: #40a070; }
+code > span.bn { color: #40a070; }
+code > span.fl { color: #40a070; }
+code > span.ch { color: #4070a0; }
+code > span.st { color: #4070a0; }
+code > span.co { color: #60a0b0; font-style: italic; }
+code > span.ot { color: #007020; }
+code > span.al { color: #ff0000; font-weight: bold; }
+code > span.fu { color: #06287e; }
+code > span.er { color: #ff0000; font-weight: bold; }
+  </style>
+  <link rel="stylesheet" href="/Users/eric/.pandoc/theme_a.css">
+  <script src="http://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML" type="text/javascript"></script>
+</head>
+<body>
+<nav id="TOC">
+<ul>
+<li><a href="#ample-manual">Ample Manual</a><ul>
+<li><a href="#usage">Usage</a></li>
+<li><a href="#ample-system-format">Ample-System Format</a><ul>
+<li><a href="#explicit">Explicit</a></li>
+<li><a href="#functional">Functional</a></li>
+</ul></li>
+<li><a href="#prior-modules">Prior Modules</a><ul>
+<li><a href="#module-format">Module Format</a></li>
+<li><a href="#included-modules">Included Modules</a></li>
+</ul></li>
+<li><a href="#table-of-options-default-values">Table of Options &amp; Default Values</a><ul>
+<li><a href="#option-descriptions">Option Descriptions</a></li>
+</ul></li>
+</ul></li>
+</ul>
+</nav>
+<h1 id="ample-manual">Ample Manual</h1>
+<h2 id="usage">Usage</h2>
+<p><code>ample</code> can be called from Matlab using the following command.</p>
+<pre class="sourceCode matlab"><code class="sourceCode matlab">[a,c] = ample(A,y,priorHandle,&lt;options&gt;);</code></pre>
+<ul>
+<li><code>y</code> is the set of observations.</li>
+<li><code>A</code> is the system used to obtain <code>y</code> from the unknown signal. This system must be in the <code>ample-system</code> format, which will be described below.</li>
+<li><code>priorHandle</code> is a function handle which takes two inputs, the hidden variables <span class="math">\(\left\{R,\Sigma\right\}\)</span>.</li>
+<li><code>&lt;options&gt;</code> is a Matlab-style list of varargin options in the pairs of <code>'opt_name',opt_value</code>.</li>
+</ul>
+<p>The <code>demos</code> directory contains a number of useful examples for different signal priors and <code>ample</code> option modes. The best place to start is with <code>demos/ample_gb_demo.m</code>.</p>
+<h2 id="ample-system-format">Ample-System Format</h2>
+<p>In order to find the factorized probabilities, <code>ample</code> needs to know the system which generated the observations, <code>y</code>. This information is given by the variable <code>A</code> in the description in the previous section. <code>ample</code> will operate on two different methods of specifying <code>A</code>:</p>
+<h3 id="explicit">Explicit</h3>
+<p>In this mode, <code>A</code> is assumed to be a linear system which is defined by an <code>MxN</code> matrix where <code>y</code> is of dimensionality <code>M</code> and the observed signals are of dimensionality <code>x</code>. I.e. a set of observations of a given signal is given by <span class="math">\(y = A x\)</span>.</p>
+<h3 id="functional">Functional</h3>
+<p>This is a more general mode for defining the observational model of <code>A</code>. Here, both linear and non-linear observations can be constructed. Instead of an explicit matrix defining a linear system, in functional mode, the variable <code>A</code> is given as a structure with four fields, each of which is a function handle of a single vector input to produce each of the following four operations...</p>
+<ul>
+<li><code>A.forward</code>: Computes the forward (signal-&gt;observation) mapping.</li>
+<li><code>A.adjoint</code>: Computes the adjoint (observation-&gt;kernel-space) mapping.</li>
+<li><code>A.squared_forward</code>: The squared operation is particular to the AMP algorithm. For a linear system, the squared forward mapping is equivalent to <span class="math">\[ (A \circ A)~x, \]</span> where <span class="math">\(\circ\)</span> is the element-wise, or Hadamaard, product.</li>
+<li><code>A.squared_adjoint</code>: The squared adjoint is similar to the above, but for the adjoint operation. For a linear system, this would be equivalent to <span class="math">\[ (A \circ A)^T~y.\]</span></li>
+</ul>
+<p>Here is an example of a random linear system using this format.</p>
+<pre class="sourceCode matlab"><code class="sourceCode matlab">N    = <span class="fl">128</span>;                        <span class="co">% Signal dimensionality</span>
+M    = <span class="fl">64</span>;                         <span class="co">% Number of observations</span>
+x    = randn(N,<span class="fl">1</span>);                 <span class="co">% Random signal</span>
+Phi  = randn(M,N) ./ sqrt(N);      <span class="co">% Random system</span>
+PhiT = Phi&#39;;                       <span class="co">% Defining the adjoint</span>
+Phi2 = Phi.*Phi;                   <span class="co">% Defining the squared forward</span>
+Phi2T= Phi2&#39;;                      <span class="co">% Defining the squared adjoint</span>
+
+A.forward         = @(x_) Phi  *x_;
+A.adjoint         = @(y_) PhiT *y_;
+A.squared_forward = @(x_) Phi2 *x_;
+A.squared_adjoint = @(y_) Phi2T*y_;
+
+y = A.forward(x);
+z = A.adjoint(y);</code></pre>
+<h2 id="prior-modules">Prior Modules</h2>
+<p>One of the nice aspects of the AMP framework is its applicability to a wide range of possible signal priors. With the right approach, even non-iid (i.e. structured) signal priors can even be used to great effect with AMP. The <code>ample</code> package provides this same versatility to the user by modularizing prior-specific calculations. The prior modules follow a standard format.</p>
+<h3 id="module-format">Module Format</h3>
+<p>The prior modules must follow the same general format.</p>
+<pre class="sourceCode matlab"><code class="sourceCode matlab">function [a,c,learned_params] = prior_module(r,s,params)
+    <span class="co">% Must return new learned prior parameters if requested</span>
+    learn_prior = <span class="fl">0</span>;
+    if nargout &gt; <span class="fl">2</span>
+        learn_prior = <span class="fl">1</span>;
+    end
+
+    <span class="co">% 1. Calculate factorized means of variational distribution, `a`.</span>
+    <span class="co">% 2. Calculate factorized means of variational distribution, `c`.</span>
+    if learn_prior
+        <span class="co">% 3. If new learned parameters are requested, update accordingly</span>
+    end</code></pre>
+<p>Here, the values <code>r</code> and <code>s</code> are the AMP hidden variables for the means and variances associated with the variational Gaussian. The structure of the <code>params</code> variable is entirely up to the module writer, <code>ample</code> will support both vector-valued and cell-valued <code>params</code>.</p>
+<blockquote>
+<p><strong>Important Note:</strong> If <code>params</code> is specified as a cell variable, then <code>params{1}</code> <em>must</em> contain the vector of learned variables !</p>
+</blockquote>
+<p>The module writer must be familiar with the calculation of the means and variances of the variational form of their desired prior distribution, <span class="math">\[a_i = \left&lt; x_i \right&gt; = \frac{1}{Z} \int \text{d}x 
+~~x~P_0(x;\theta) \exp\left\{ \frac{(x - R_i)^2}{2 \Sigma_i^2}\right\},\]</span></p>
+<p><span class="math">\[c_i = \left&lt; x_i^2 \right&gt; - a_i^2= \frac{1}{Z} \int \text{d}x 
+~~x^2~P_0(x;\theta) \exp\left\{ \frac{(x - R_i)^2}{2 \Sigma_i^2}\right\},\]</span></p>
+<p>where <span class="math">\(P_0\)</span> is the desired prior distribution and <span class="math">\(\theta\)</span> are the parameters associated with that distribution. This will generally also include the calculation of the proper partition function. Depending on the prior, this calculation may be extremly non-trivial. If numerical integration is required to solve for these variables, <code>ample</code> will still support this, but at the cost computation time.</p>
+<p>The determination of the prior parameter update may be equally non-trivial, in general.</p>
+<h3 id="included-modules">Included Modules</h3>
+<p>For ease of use, some common prior modules are already included in the <code>ample</code> package. These serve as good examples for the expected format of the prior modules. <code>ample</code> currently provides the following signal priors:</p>
+<ul>
+<li><strong>Binary</strong>
+<ul>
+<li><code>priors/prior_binary.m</code></li>
+<li>Signal coefficients are discrete values are in <span class="math">\(\left\{ 0, 1\right\}\)</span> and have value <span class="math">\(1\)</span> with probability <span class="math">\(\rho\)</span>.</li>
+<li><code>params</code> format:
+<ul>
+<li><code>params(1)</code> -- <span class="math">\(\rho\)</span></li>
+</ul></li>
+</ul></li>
+<li><strong>Gauss-Bernoulli </strong>
+<ul>
+<li><code>priors/prior_gb.m</code></li>
+<li>Signal coefficients are real values given by <span class="math">\[Prob[x_i = x] \propto (1 - \rho)~\delta(x) + \rho \mathcal{N}(\mu,\sigma^2).\]</span> This distribution has been shown to be very good for modelling &quot;sparse&quot; signals, such as those desired for compressed sensing.</li>
+<li><code>params</code> format:
+<ul>
+<li><code>params(1)</code> -- <span class="math">\(\mu\)</span></li>
+<li><code>params(2)</code> -- <span class="math">\(\sigma^2\)</span></li>
+<li><code>params(3)</code> -- <span class="math">\(\rho\)</span></li>
+</ul></li>
+</ul></li>
+<li><strong>L1-Sparse</strong>
+<ul>
+<li><code>priors/prior_l1sparse.m</code></li>
+<li>Signal coefficients are assumed to be sparse, or at least compressible. That is, there are assumed to be very few non-zero coefficients. Using the L1-Sparse module isn't neccesarily defining a &quot;prior,&quot; per-se, but it does solve the equivalent LASSO problem when using <code>ample</code> for inverse-problems such as compressed sensing, <span class="math">\[ a = \arg \min_x || x ||_1 ~~ \text{s.t.} ~~ || y - A x ||^2_2 &lt; \epsilon\]</span></li>
+<li><code>params</code> format:
+<ul>
+<li><code>params(1)</code> -- Minimum coefficient value</li>
+<li><code>params(2)</code> -- Maximum coefficient value</li>
+</ul></li>
+</ul></li>
+<li><strong>Q-ary</strong>
+<ul>
+<li><code>priors/prior_qary.m</code></li>
+<li>Signal coefficients are discrete values in <span class="math">\(\left\{ \tau_0, \tau_1, \dots, \tau_{Q-1} \right\}\)</span> with probabilities defined according to the PMF <span class="math">\[ Prob[x = \tau_q] = \rho_q. \]</span></li>
+<li><code>params</code> format:
+<ul>
+<li><code>params{1}</code> -- PMF vector, <span class="math">\(\left[\rho_0, \rho_1, \dots, \rho_{Q-1}\right]\)</span></li>
+<li><code>params{2}</code> -- Alphabet vector, <span class="math">\(\left[\tau_0,\tau_1,\dots,\tau_{Q-1} \right]\)</span></li>
+</ul></li>
+</ul></li>
+</ul>
+<h2 id="table-of-options-default-values">Table of Options &amp; Default Values</h2>
+<table>
+<thead>
+<tr class="header">
+<th style="text-align: left;">Option Name</th>
+<th style="text-align: left;">Values</th>
+<th style="text-align: center;">Default Value</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;"><code>convergence_tolerance</code></td>
+<td style="text-align: left;">Positive Small Real</td>
+<td style="text-align: center;"><code>1e-10</code></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>convergence_type</code></td>
+<td style="text-align: left;">{<code>'residual'</code>,<code>'iteration'</code>}</td>
+<td style="text-align: center;"><code>'iteration'</code></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>damp</code></td>
+<td style="text-align: left;">Real in [0,1)</td>
+<td style="text-align: center;">0.0</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>debug</code></td>
+<td style="text-align: left;">Boolean</td>
+<td style="text-align: center;"><code>false</code></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>delta</code></td>
+<td style="text-align: left;">Positive Real</td>
+<td style="text-align: center;">1.0</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>image_mode</code></td>
+<td style="text-align: left;">Boolean</td>
+<td style="text-align: center;"><code>false</code></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>init_a</code></td>
+<td style="text-align: left;">Vector of reals</td>
+<td style="text-align: center;"><code>zeros(N,1)</code></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>init_c</code></td>
+<td style="text-align: left;">Vector of positive reals</td>
+<td style="text-align: center;"><code>ones(N,1)</code></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>learn_delta</code></td>
+<td style="text-align: left;">Boolean</td>
+<td style="text-align: center;"><code>true</code></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>learning_mode</code></td>
+<td style="text-align: left;">{<code>'track'</code>,<code>'em'</code>}</td>
+<td style="text-align: center;"><code>'track'</code></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>learn_prior_params</code></td>
+<td style="text-align: left;">Boolean</td>
+<td style="text-align: center;"><code>false</code></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>max_em_iterations</code></td>
+<td style="text-align: left;">Positive Integer</td>
+<td style="text-align: center;">20</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>max_iterations</code></td>
+<td style="text-align: left;">Positive Integer</td>
+<td style="text-align: center;">250</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>mean_approximation</code></td>
+<td style="text-align: left;">Boolean</td>
+<td style="text-align: center;"><code>false</code></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>pause_mode</code></td>
+<td style="text-align: left;">Boolean</td>
+<td style="text-align: center;"><code>false</code></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>prior_damp</code></td>
+<td style="text-align: left;">Real in [0,1)</td>
+<td style="text-align: center;">0.0</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>prior_params</code></td>
+<td style="text-align: left;">Function Handle</td>
+<td style="text-align: center;"><em>See</em> 'Prior-Handle Format'</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>report_history</code></td>
+<td style="text-align: left;">Boolean</td>
+<td style="text-align: center;"><code>true</code></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>true_solution</code></td>
+<td style="text-align: left;">Vector of Reals</td>
+<td style="text-align: center;"><code>[]</code></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>verbose_mode</code></td>
+<td style="text-align: left;">{0,1}</td>
+<td style="text-align: center;">1</td>
+</tr>
+</tbody>
+</table>
+<h3 id="option-descriptions">Option Descriptions</h3>
+<h4 id="required">Required</h4>
+<ul>
+<li><code>prior_params</code>:</li>
+</ul>
+<h4 id="general">General</h4>
+<ul>
+<li><code>convergence_tolerance</code>:</li>
+<li><code>convergence_type</code>:</li>
+<li><code>max_iterations</code>:</li>
+<li><code>verbose_mode</code>:</li>
+<li><code>delta</code>:</li>
+</ul>
+<h4 id="debug">Debug</h4>
+<ul>
+<li><code>true_solution</code>:</li>
+<li><code>debug</code>:</li>
+<li><code>pause_mode</code>:</li>
+<li><code>image_mode</code>:</li>
+<li><code>report_history</code>:</li>
+</ul>
+<h4 id="fine-tuning">Fine-Tuning</h4>
+<ul>
+<li><code>init_a</code>: Initial value for the factorized means. The dimensionality of <code>init_a</code> should be equal to that of the original signal.</li>
+<li><p><code>init_c</code>: Initial value for the factorized variances.The dimensionality of <code>init_c</code> should be equal to that of the original signal.</p></li>
+<li><code>damp</code>:</li>
+<li><p><code>prior_damp</code>:</p></li>
+</ul>
+<h4 id="learning-control">Learning Control</h4>
+<ul>
+<li><code>learn_delta</code>:</li>
+<li><code>learn_prior_params</code>:</li>
+<li><code>learning_mode</code>:</li>
+<li><code>max_em_iterations</code>:</li>
+</ul>
+</body>
+</html>
