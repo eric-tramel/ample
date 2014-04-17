@@ -20,5 +20,5 @@ implement their own priors to fit AMP to their specific application.
 Acknowledgements
 ----------------
 Many thanks to Jean Barbier and Andre Manoel for their moment and update calculations
-for the supplied priors. Also, special thanks to Florent Krzakala, whose ERC SPARCS 307087 
+for the supplied priors. Also, special thanks to Florent Krzakala, whose ERC SPARCS 307087 grant
 funded this work.
