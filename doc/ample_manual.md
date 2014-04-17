@@ -3,7 +3,7 @@
 `ample` can be called from Matlab using the following command.
 
 ```matlab
-[a,c] = ample(A,y,priorHandle,<options>);
+[a,c] = ample(A,y,priorHandle,'Option1',Value1,'Option2',Value2, ...);
 ```
 * `y` is the set of observations.
 * `A` is the system used to obtain `y` from the unknown signal. This
@@ -154,41 +154,45 @@ priors:
 | `learn_prior_params`    |  Boolean    | `false`               |  
 | `max_em_iterations`     |  Positive Integer    | 20           |
 | `max_iterations`        |  Positive Integer    | 250          |  
-| `mean_approximation`    |  Boolean    | `false`               |  
 | `pause_mode`            |  Boolean    | `false`               |  
 | `prior_damp`            |  Real in [0,1)    | 0.0             |  
-| `prior_params`          |  Function Handle    | *See* 'Prior-Handle Format' |
+| `prior_params`          |  Function Handle    | *See* 'Prior Modules' |
 | `report_history`        |  Boolean            | `true`        |
 | `true_solution`         |  Vector of Reals    | `[]`          |  
 | `verbose_mode`          |  {0,1}              | 1             |  
 
 ### Option Descriptions
 #### Required
-* `prior_params`:
+* `prior_params`: A vector or cell structure which specifies needed parameters for the chosen prior module. See the "Prior Modules" section for more information.
 
 #### General 
-* `convergence_tolerance`:
-* `convergence_type`:
-* `max_iterations`:
-* `verbose_mode`:
-* `delta`:
+* `convergence_tolerance`: Tolerance for between-iteration differences. The way in which this difference is calculated is dependent upon the setting of convergence type. 
+* `convergence_type`: Specifies how to measure between-iteration convergence. 
+    - `'iteration'`: Measures the mean-square-error (MSE) between the values of `a` at each iteration, $$ \frac{1}{N} \left|\left| a^{k} - a^{k-1} \right|\right|^2_2.$$
+    - `'residual'`: Measures the squared $\ell_2$ difference between the given observations `y` and the current iteration, $$ \left|\left| y - A(a^{k}) \right|\right|^2_2.$$
+* `max_iterations`: Prevents `ample` from continuing in an oscillatory state indefinitely. Specify the maximum number of iterations AMP iterations to perform.
+* `verbose_mode`: Controls the level of reporting to the console. 
+    - `0`: Print nothing to console.
+    - `1`: Print per-iteration information.
+* `delta`: The variance of the AWGN on the measurements. Since it is a variance, should have a positive value. If the noise variance is unknown, then this value will be used as the *initialization* for estimation of the noise variance. In this case, it is best to start this value high, i.e. `1` as in the default case.
 
 #### Debug 
-* `true_solution`:
-* `debug`:
-* `pause_mode`:
-* `image_mode`:
-* `report_history`:
+* `true_solution`: Vector of the originally sampled signal. Useful to track the progress of the AMP iteration.
+* `debug`: Useful mode when testing out new prior modules. When running in debug mode, per-iteration state information will be printed to a number of figures so that the user can track the progress of AMP.
+* `pause_mode`: Pauses `ample` after each AMP iteration. Useful in the `debug = 1` setting to view the per-iteration outputs.
+* `image_mode`: If the original signal was an image, it is helpful to reshape the per-iteration state information back into two dimensional format for viewing in debug mode. This option does nothing if not currently running in debug mode.
+* `report_history`: Controls whether or not the per-iteration history for the algorithm is recorded in the output history variable or not. This is useful if one wants to turn off history reporting when more than 2 output arguments are specified. In this case, it is the default operation of `ample` to record this history information. This setting can disable that recording.
 
 #### Fine-Tuning
 * `init_a`: Initial value for the factorized means. The dimensionality of `init_a` should be equal to that of the original signal.
 * `init_c`: Initial value for the factorized variances.The dimensionality of `init_c` should be equal to that of the original signal.
-
-* `damp`:
-* `prior_damp`: 
+* `damp`: Sets a damping-value, $\alpha$, on the update of $\left\{ R, \Sigma\right\}$ at each iteration, $$R^{k} = \alpha R^{k-1} + (1 - \alpha) \mathcal{F}(a^{k-1},c^{k-1}),$$ $$\Sigma^{k} = \alpha \Sigma^{k-1} + (1 - \alpha) \mathcal{G}(a^{k-1},c^{k-1}),$$ where $\mathcal{F}$ and $\mathcal{G}$ are the calculations for the variational Gaussian's means and variances, respectively.
+* `prior_damp`: Sets a damping-value, $\gamma$, on the update of $\left\{a,c\right\}$ at each iteration,$$a^{k} = \gamma a^{k-1} + (1 - \gamma) \mathcal{I}(R^{k},\Sigma^{k}),$$ $$c^{k} = \gamma c^{k-1} + (1 - \gamma) \mathcal{J}(R^{k},\Sigma^{k}),$$ where $\mathcal{I}$ and $\mathcal{J}$ are the calculations for the factorized means and variances, respectively, which are dependent upon the prior module. This damping is only useful in some corner cases.
 
 #### Learning Control
-* `learn_delta`:
-* `learn_prior_params`:
-* `learning_mode`:
-* `max_em_iterations`:
+* `learn_delta`: Controls whether or not the value of the noise variance will be estimated alongside the factorization.
+* `learn_prior_params`: Controls whether or not the value of the prior parameters will be estimated alongside the factorization. The manner in which these parameters are estimated is controlled by the prior module. For more information, see the "Prior Modules" section.
+* `learning_mode`: Specify when estimated variables are updated.
+    - `'em'`: All learned parameters are updated *after* the convergence of the AMP iteration, i.e. when $\left\{a,c,R,\Sigma \right\}$ are all at their fixed-point values. This mode can be much slower than the `'track'` mode since it requires multiple AMP convergences.
+    - `'track'`: All learned parameters are updated at each AMP iteration using non-converged values of $\left\{a,c,R,\Sigma \right\}$.
+* `max_em_iterations`: When running `learning_mode = 'em'`, this option controls the maximum number of AMP convergences (and therefore, the maximum number of learned parameter updates).

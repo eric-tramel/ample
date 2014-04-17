@@ -162,7 +162,7 @@ code > span.er { color: #ff0000; font-weight: bold; }
 <h1 id="ample-manual">Ample Manual</h1>
 <h2 id="usage">Usage</h2>
 <p><code>ample</code> can be called from Matlab using the following command.</p>
-<pre class="sourceCode matlab"><code class="sourceCode matlab">[a,c] = ample(A,y,priorHandle,&lt;options&gt;);</code></pre>
+<pre class="sourceCode matlab"><code class="sourceCode matlab">[a,c] = ample(A,y,priorHandle,<span class="st">&#39;Option1&#39;</span>,Value1,<span class="st">&#39;Option2&#39;</span>,Value2, ...);</code></pre>
 <ul>
 <li><code>y</code> is the set of observations.</li>
 <li><code>A</code> is the system used to obtain <code>y</code> from the unknown signal. This system must be in the <code>ample-system</code> format, which will be described below.</li>
@@ -344,36 +344,31 @@ z = A.adjoint(y);</code></pre>
 <td style="text-align: center;">250</td>
 </tr>
 <tr class="even">
-<td style="text-align: left;"><code>mean_approximation</code></td>
-<td style="text-align: left;">Boolean</td>
-<td style="text-align: center;"><code>false</code></td>
-</tr>
-<tr class="odd">
 <td style="text-align: left;"><code>pause_mode</code></td>
 <td style="text-align: left;">Boolean</td>
 <td style="text-align: center;"><code>false</code></td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td style="text-align: left;"><code>prior_damp</code></td>
 <td style="text-align: left;">Real in [0,1)</td>
 <td style="text-align: center;">0.0</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td style="text-align: left;"><code>prior_params</code></td>
 <td style="text-align: left;">Function Handle</td>
-<td style="text-align: center;"><em>See</em> 'Prior-Handle Format'</td>
+<td style="text-align: center;"><em>See</em> 'Prior Modules'</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td style="text-align: left;"><code>report_history</code></td>
 <td style="text-align: left;">Boolean</td>
 <td style="text-align: center;"><code>true</code></td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td style="text-align: left;"><code>true_solution</code></td>
 <td style="text-align: left;">Vector of Reals</td>
 <td style="text-align: center;"><code>[]</code></td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td style="text-align: left;"><code>verbose_mode</code></td>
 <td style="text-align: left;">{0,1}</td>
 <td style="text-align: center;">1</td>
@@ -383,37 +378,49 @@ z = A.adjoint(y);</code></pre>
 <h3 id="option-descriptions">Option Descriptions</h3>
 <h4 id="required">Required</h4>
 <ul>
-<li><code>prior_params</code>:</li>
+<li><code>prior_params</code>: A vector or cell structure which specifies needed parameters for the chosen prior module. See the &quot;Prior Modules&quot; section for more information.</li>
 </ul>
 <h4 id="general">General</h4>
 <ul>
-<li><code>convergence_tolerance</code>:</li>
-<li><code>convergence_type</code>:</li>
-<li><code>max_iterations</code>:</li>
-<li><code>verbose_mode</code>:</li>
-<li><code>delta</code>:</li>
+<li><code>convergence_tolerance</code>: Tolerance for between-iteration differences. The way in which this difference is calculated is dependent upon the setting of convergence type.</li>
+<li><code>convergence_type</code>: Specifies how to measure between-iteration convergence.
+<ul>
+<li><code>'iteration'</code>: Measures the mean-square-error (MSE) between the values of <code>a</code> at each iteration, <span class="math">\[ \frac{1}{N} \left|\left| a^{k} - a^{k-1} \right|\right|^2_2.\]</span></li>
+<li><code>'residual'</code>: Measures the squared <span class="math">\(\ell_2\)</span> difference between the given observations <code>y</code> and the current iteration, <span class="math">\[ \left|\left| y - A(a^{k}) \right|\right|^2_2.\]</span></li>
+</ul></li>
+<li><code>max_iterations</code>: Prevents <code>ample</code> from continuing in an oscillatory state indefinitely. Specify the maximum number of iterations AMP iterations to perform.</li>
+<li><code>verbose_mode</code>: Controls the level of reporting to the console.
+<ul>
+<li><code>0</code>: Print nothing to console.</li>
+<li><code>1</code>: Print per-iteration information.</li>
+</ul></li>
+<li><code>delta</code>: The variance of the AWGN on the measurements. Since it is a variance, should have a positive value. If the noise variance is unknown, then this value will be used as the <em>initialization</em> for estimation of the noise variance. In this case, it is best to start this value high, i.e. <code>1</code> as in the default case.</li>
 </ul>
 <h4 id="debug">Debug</h4>
 <ul>
-<li><code>true_solution</code>:</li>
-<li><code>debug</code>:</li>
-<li><code>pause_mode</code>:</li>
-<li><code>image_mode</code>:</li>
-<li><code>report_history</code>:</li>
+<li><code>true_solution</code>: Vector of the originally sampled signal. Useful to track the progress of the AMP iteration.</li>
+<li><code>debug</code>: Useful mode when testing out new prior modules. When running in debug mode, per-iteration state information will be printed to a number of figures so that the user can track the progress of AMP.</li>
+<li><code>pause_mode</code>: Pauses <code>ample</code> after each AMP iteration. Useful in the <code>debug = 1</code> setting to view the per-iteration outputs.</li>
+<li><code>image_mode</code>: If the original signal was an image, it is helpful to reshape the per-iteration state information back into two dimensional format for viewing in debug mode. This option does nothing if not currently running in debug mode.</li>
+<li><code>report_history</code>: Controls whether or not the per-iteration history for the algorithm is recorded in the output history variable or not. This is useful if one wants to turn off history reporting when more than 2 output arguments are specified. In this case, it is the default operation of <code>ample</code> to record this history information. This setting can disable that recording.</li>
 </ul>
 <h4 id="fine-tuning">Fine-Tuning</h4>
 <ul>
 <li><code>init_a</code>: Initial value for the factorized means. The dimensionality of <code>init_a</code> should be equal to that of the original signal.</li>
-<li><p><code>init_c</code>: Initial value for the factorized variances.The dimensionality of <code>init_c</code> should be equal to that of the original signal.</p></li>
-<li><code>damp</code>:</li>
-<li><p><code>prior_damp</code>:</p></li>
+<li><code>init_c</code>: Initial value for the factorized variances.The dimensionality of <code>init_c</code> should be equal to that of the original signal.</li>
+<li><code>damp</code>: Sets a damping-value, <span class="math">\(\alpha\)</span>, on the update of <span class="math">\(\left\{ R, \Sigma\right\}\)</span> at each iteration, <span class="math">\[R^{k} = \alpha R^{k-1} + (1 - \alpha) \mathcal{F}(a^{k-1},c^{k-1}),\]</span> <span class="math">\[\Sigma^{k} = \alpha \Sigma^{k-1} + (1 - \alpha) \mathcal{G}(a^{k-1},c^{k-1}),\]</span> where <span class="math">\(\mathcal{F}\)</span> and <span class="math">\(\mathcal{G}\)</span> are the calculations for the variational Gaussian's means and variances, respectively.</li>
+<li><code>prior_damp</code>: Sets a damping-value, <span class="math">\(\gamma\)</span>, on the update of <span class="math">\(\left\{a,c\right\}\)</span> at each iteration,<span class="math">\[a^{k} = \gamma a^{k-1} + (1 - \gamma) \mathcal{I}(R^{k},\Sigma^{k}),\]</span> <span class="math">\[c^{k} = \gamma c^{k-1} + (1 - \gamma) \mathcal{J}(R^{k},\Sigma^{k}),\]</span> where <span class="math">\(\mathcal{I}\)</span> and <span class="math">\(\mathcal{J}\)</span> are the calculations for the factorized means and variances, respectively, which are dependent upon the prior module. This damping is only useful in some corner cases.</li>
 </ul>
 <h4 id="learning-control">Learning Control</h4>
 <ul>
-<li><code>learn_delta</code>:</li>
-<li><code>learn_prior_params</code>:</li>
-<li><code>learning_mode</code>:</li>
-<li><code>max_em_iterations</code>:</li>
+<li><code>learn_delta</code>: Controls whether or not the value of the noise variance will be estimated alongside the factorization.</li>
+<li><code>learn_prior_params</code>: Controls whether or not the value of the prior parameters will be estimated alongside the factorization. The manner in which these parameters are estimated is controlled by the prior module. For more information, see the &quot;Prior Modules&quot; section.</li>
+<li><code>learning_mode</code>: Specify when estimated variables are updated.
+<ul>
+<li><code>'em'</code>: All learned parameters are updated <em>after</em> the convergence of the AMP iteration, i.e. when <span class="math">\(\left\{a,c,R,\Sigma \right\}\)</span> are all at their fixed-point values. This mode can be much slower than the <code>'track'</code> mode since it requires multiple AMP convergences.</li>
+<li><code>'track'</code>: All learned parameters are updated at each AMP iteration using non-converged values of <span class="math">\(\left\{a,c,R,\Sigma \right\}\)</span>.</li>
+</ul></li>
+<li><code>max_em_iterations</code>: When running <code>learning_mode = 'em'</code>, this option controls the maximum number of AMP convergences (and therefore, the maximum number of learned parameter updates).</li>
 </ul>
 </body>
 </html>
