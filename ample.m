@@ -138,7 +138,12 @@ function [a,c,history,R,S,prior_params] = ample(F_,y,moment_func,varargin)
             
             % Update delta
             if options.learn_delta
-                delta = sum( (abs(y) - abs(O)).^2  ./ (1 + V./delta).^2 ) ./ sum(1 ./ (1 + V./delta));
+                switch options.noise_estimator
+                case 'true'
+                    delta = sum( abs(y - O).^2  ./ (1 + V./delta).^2 ) ./ sum(1 ./ (1 + V./delta));
+                case 'norm-approx'
+                    delta = norm(y-O) ./ N;
+                end
             end
             
             if conv_mode
@@ -151,9 +156,19 @@ function [a,c,history,R,S,prior_params] = ample(F_,y,moment_func,varargin)
             if report_history
                 history.convergence(i) = convergence;
                 history.delta_estimate(i) = delta;
-                history.prior_params(i,:) = prior_params{1};        % Assuming that the first cell are the learned values
+                history.residual(i) = sum(abs(y - O).^2)./M;
+                % history.vfe(i) = sum(y - F(a)).^2./(2.*delta) + ...
+                %                  (M/2).*log(2*pi*delta) + ...
+                %                  -0.5*sum()     % Sum of log partition goes here
+                %                  + sum(c + (a-R).^2./(2.*S));
+                if iscell(prior_params)
+                    history.prior_params(i,:) = prior_params{1};        % Assuming that the first cell are the learned values
+                else
+                    history.prior_params(i,:) = prior_params;
+                end
                 if calc_mse
                     history.mse(i) = norm(a-x0).^2./N;
+                    history.nish_cond(i) = mean(abs((a-x0).^2 - c));
                 end
             end
 
@@ -177,9 +192,9 @@ function [a,c,history,R,S,prior_params] = ample(F_,y,moment_func,varargin)
             % Output
             if options.verbose_mode
                 if calc_mse
-                    fprintf('\r [%d] | delta : %0.2e | convergence : %0.2e | mse : %0.2e      ',i,delta,convergence,norm(a-x0).^2./N);
+                    fprintf('[%d] | delta : %0.2e | convergence : %0.2e | residual : %0.2e | mse : %0.2e      \n',i,delta,convergence,sum(abs(y - O).^2)./M,norm(a-x0).^2./N);
                 else
-                    fprintf('\r [%d] | delta : %0.2e | convergence : %0.2e |        ',i,delta,convergence);
+                    fprintf('[%d] | delta : %0.2e | convergence : %0.2e | residual : %0.2e |        \n',i,delta,convergence,sum(abs(y - O).^2)./M);
                 end
             end
             
@@ -207,6 +222,7 @@ function [a,c,history,R,S,prior_params] = ample(F_,y,moment_func,varargin)
             history.prior_params = [];
             if calc_mse
                 history.mse = [];
+                history.nish_cond = [];
             end
         end
         for emiter = 1:options.max_em_iterations
@@ -234,6 +250,7 @@ function [a,c,history,R,S,prior_params] = ample(F_,y,moment_func,varargin)
                 history.prior_params = [history.prior_params; history_.prior_params];
                 if calc_mse
                     history.mse = [history.mse, history_.mse];
+                    history.nish_cond = [history.nish_cond, history_.nish_cond];
                 end
             end
             
@@ -356,6 +373,8 @@ function options = defaults(N,M)
     options.pause_mode = 0;
     options.convergence_type = 'iteration';
     options.complex_split_mode = 0;
+    options.noise_estimator = 'true';
+    options.adaptive_damp = 'false';
     
 function vars = struct2varargin(structure)
     % AMPLE::STRUCT2VARARGIN Convert the given structure to varargin
