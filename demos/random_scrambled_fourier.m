@@ -31,13 +31,17 @@ function y = rsfft_forward(x,I,scram)
 % operation.
 X = fft(x(scram));              % Get the fourier coefficients of the scrambled signal
 y = X(I);                       % Sub-sample the spectra (i.e. M random rows of FFT).
-
+y = y ./ sqrt(numel(x));
 
 function x = rsfft_adjoint(y,N,I,inv_scram)
 % RANDOM_SCRAMBED_FOURIER::RSFFT_ADJOINT Perform the adjoint operation via
 % the IFFT.
 Y    = zeros(N,1);
 Y(I) = y;                     % Inserting the Y's into place  
+
+% Do we scale these up?
+Y = Y.*sqrt(N);
+
 x = ifft(Y);                  % Perform the IFFT
 x = x(inv_scram);             % Reverse the scrambling
 x = real(x);                  % Should we make this real? 
